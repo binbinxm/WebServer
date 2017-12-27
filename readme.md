@@ -1,3 +1,19 @@
+# Introduction
+
+This is an arduino base sensor with web(port 80) server.
+
+Hardware: Arduino Mega2560, DHT22 sensor, ESP8266 module(wifi) and arduino IO expander card.
+
+It will print some basic info on console(UART0) while initialization, including sensor and wifi info.
+
+Anyone can send a http get request to http://IP:80, and arduino will reply with below message in json format:
+
+{"dht22":{"status":"succeed","message":{"temperature":"19.20C","humidity":"17.20%"}}}
+
+or below error message:
+
+{"dht22":{"status":"error","message":"Error reading temperature!"}}
+
 # How to use this repository
 
 1. create secret.h
