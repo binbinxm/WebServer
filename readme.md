@@ -6,13 +6,17 @@ Hardware: Arduino Mega2560, DHT22 sensor, ESP8266 module(wifi) and arduino IO ex
 
 It will print some basic info on console(UART0) while initialization, including sensor and wifi info.
 
-Anyone can send a http get request to http://IP:80, and arduino will reply with below message in json format:
+Anyone can send a http get request to http://ip/dht22, and arduino will reply below message in json format:
 
 {"dht22":{"status":"succeed","message":{"temperature":"19.20C","humidity":"17.20%"}}}
 
 or below error message:
 
 {"dht22":{"status":"error","message":"Error reading temperature!"}}
+
+**http get request should starts with below string:**
+
+GET /DHT22 HTTP
 
 # How to use this repository
 

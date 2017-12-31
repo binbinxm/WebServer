@@ -23,6 +23,7 @@ int status = WL_IDLE_STATUS;     // the Wifi radio's status
 int reqCount = 0;                // number of requests received
 
 WiFiEspServer server(80);
+String http_string = "";
 
 //*******************************************************************************
 #define DHTPIN            22         // Pin which is connected to the DHT sensor.
@@ -30,6 +31,7 @@ WiFiEspServer server(80);
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
 uint32_t delayMS;
+String ret_dht = "";
 //*******************************************************************************
 
 void setup()
@@ -92,10 +94,6 @@ void setup()
   Serial.println("{\"dht22\":{\"status\":\"error\",\"message\":\"Error reading temperature!\"}}");
   Serial.println("{\"dht22\":{\"status\":\"succeed\",\"message\":{\"temperature\":\"19.20C\",\"humidity\":\"17.20%\"}}}");
   Serial.println("------------------------------------");
-  
-  // Delay between measurements.
-  delay(delayMS);
-  Serial.print(read_dht22());
   //*******************************************************************************
   
   // start the web server on port 80
@@ -105,36 +103,45 @@ void setup()
 
 void loop()
 {
+  ret_dht = "";
   // listen for incoming clients
   WiFiEspClient client = server.available();
   if (client) {
-    Serial.println("New client");
+    // Serial.println("New client");
     // an http request ends with a blank line
     boolean currentLineIsBlank = true;
     while (client.connected()) {
       if (client.available()) {
         char c = client.read();
         Serial.write(c);
+        if (http_string.length() < 100) http_string += c;
+        
         // if you've gotten to the end of the line (received a newline
         // character) and the line is blank, the http request has ended,
         // so you can send a reply
         if (c == '\n' && currentLineIsBlank) {
-          Serial.println("Sending response");
-          
-          // send a standard http response header
-          // use \r\n instead of many println statements to speedup data send
-          client.print(
+          http_string.toUpperCase();
+          if (http_string.startsWith("GET /DHT22 HTTP")){
+            client.print(
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: text/html\r\n"
             "Connection: close\r\n"  // the connection will be closed after completion of the response
-            "Refresh: 20\r\n"        // refresh the page automatically every 20 sec
             "\r\n");
-          client.print(read_dht22());
-
-          // Delay between measurements.
-          delay(delayMS);
+            ret_dht = read_dht22();
+            client.print(ret_dht);
+            http_string = String("");
+            break;
+          }
+          
+          client.print(
+            "HTTP/1.1 404 Not Found\r\n"
+            "Content-Type: text/html\r\n"
+            "Connection: close\r\n"  // the connection will be closed after completion of the response
+            "\r\n");
+          http_string = String("");
           break;
         }
+        
         if (c == '\n') {
           // you're starting a new line
           currentLineIsBlank = true;
@@ -147,10 +154,12 @@ void loop()
     }
     // give the web browser time to receive the data
     delay(10);
-
+    Serial.println(ret_dht);
+    // Delay between measurements.
+    delay(delayMS);
     // close the connection:
     client.stop();
-    Serial.println("Client disconnected");
+
   }
 }
 
