@@ -27,7 +27,9 @@ String http_string = "";
 
 //*******************************************************************************
 #define DHTPIN            22         // Pin which is connected to the DHT sensor.
-#define DHTTYPE           DHT22     // DHT 22 (AM2302)
+#define DHTTYPE           DHT22      // DHT 22 (AM2302)
+#define DUSTADC           15         // VO
+#define DUSTLED           53         // LED on/off
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
 uint32_t delayMS;
@@ -36,6 +38,10 @@ String ret_dht = "";
 
 void setup()
 {
+  // dust sensor setting
+  pinMode(DUSTLED,OUTPUT);
+  pinMode(DUSTADC, INPUT); 
+  
   // initialize serial for debugging
   Serial.begin(115200);
   // initialize serial for ESP module
@@ -93,8 +99,12 @@ void setup()
   Serial.println("Example output:");
   Serial.println("{\"dht22\":{\"status\":\"error\",\"message\":\"Error reading temperature!\"}}");
   Serial.println("{\"dht22\":{\"status\":\"succeed\",\"message\":{\"temperature\":\"19.20C\",\"humidity\":\"17.20%\"}}}");
+  Serial.println("{\"dust\":{\"status\":\"error\",\"message\":\"error reading dust sensor\"}}");
+  Serial.println("{\"dust\":{\"status\":\"succeed\",\"message\":186.81}}");
   Serial.println("------------------------------------");
   //*******************************************************************************
+
+  read_dust();
   
   // start the web server on port 80
   server.begin();
@@ -132,7 +142,17 @@ void loop()
             http_string = String("");
             break;
           }
-          
+          if (http_string.startsWith("GET /DUST HTTP")){
+            client.print(
+            "HTTP/1.1 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            "Connection: close\r\n"  // the connection will be closed after completion of the response
+            "\r\n");
+            ret_dht = read_dust();
+            client.print(ret_dht);
+            http_string = String("");
+            break;
+          }
           client.print(
             "HTTP/1.1 404 Not Found\r\n"
             "Content-Type: text/html\r\n"
@@ -180,6 +200,38 @@ void printWifiStatus()
   Serial.print("To see this page in action, open a browser to http://");
   Serial.println(ip);
   Serial.println();
+}
+
+String read_dust() {
+  String ret;
+  float dustVal = 0;
+  int i;
+  
+  for(i=0;i<100;i++) dustVal += read_dust_once();
+  dustVal /= 100.0;
+  //dustVal = (dustVal * (5.0 / 1024.0) * 0.17 - 0.1) * 1000;
+  //if (dustVal < 0)  dustVal = 0;
+  ret = String("{\"dust\":{\"status\":\"succeed\",\"message\":" + String(dustVal) +"}}\r\n");
+  /*
+  if (dustVal>36.455) {
+    //dustVal = (float(dustVal/1024)-0.0356)*120000*0.035;
+    ret = String("{\"dust\":{\"status\":\"succeed\",\"message\":" + String(dustVal) +"\"}}\r\n");
+  }
+  else  {
+    ret = String("{\"dust\":{\"status\":\"error\",\"message\":\"error reading dust sensor\"}}\r\n");
+  }*/
+  return ret;
+}
+
+float read_dust_once() {
+  float dustVal = 0;
+  digitalWrite(DUSTLED,LOW); 
+  delayMicroseconds(280);
+  dustVal=analogRead(DUSTADC); 
+  delayMicroseconds(40);
+  digitalWrite(DUSTLED,HIGH); 
+  delayMicroseconds(9680);
+  return dustVal;
 }
 
 String read_dht22() {
